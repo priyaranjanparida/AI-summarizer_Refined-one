@@ -89,9 +89,14 @@ function SettingsPanel() {
   const {
     settings,
     updateSettings,
+    inputMode,
     inputContent,
     selectedFile,
     isLoading,
+    setIsLoading,
+    setResult,
+    setError,
+    addToHistory,
   } = useAppContext();
 
   /**
@@ -114,12 +119,62 @@ function SettingsPanel() {
 
   /**
    * handleGenerate
-   * Placeholder handler — we'll wire the real summarisation
-   * pipeline here in a later step.
+   * Triggers the summarisation pipeline via the Python backend.
    */
-  const handleGenerate = () => {
-    console.log('Generate clicked');
-    // TODO: Trigger the summarisation pipeline
+  const handleGenerate = async () => {
+    setIsLoading(true);
+    setError(null);
+    setResult(null);
+
+    try {
+      // Import dynamically to avoid top-level issues if api.js isn't ready
+      const { generateSummaryWithBackend } = await import('../lib/api.js');
+      
+      // Determine what content to send
+      let contentToSend = inputContent;
+      if (inputMode === 'file' && selectedFile) {
+        // For this demo, we'll extract text from .txt files before sending
+        // In a real app, you would use FormData to upload the actual file to FastAPI
+        const text = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target.result);
+          reader.onerror = () => reject(new Error("File read error"));
+          reader.readAsText(selectedFile);
+        });
+        contentToSend = text;
+      }
+
+      // Call the Python backend
+      const resultMarkdown = await generateSummaryWithBackend({
+        mode: inputMode,
+        content: contentToSend,
+        provider: settings.provider,
+        apiKey: settings.apiKey,
+        summaryType: settings.summaryType,
+      });
+
+      setResult(resultMarkdown);
+
+      // Save to history
+      const { saveConversation } = await import('../lib/storage.js');
+      const savedItem = saveConversation({
+        title: contentToSend.substring(0, 50) + '...',
+        result: resultMarkdown,
+        provider: LLM_PROVIDERS.find(p => p.value === settings.provider)?.label || settings.provider,
+        summaryType: SUMMARY_TYPES.find(t => t.id === settings.summaryType)?.label || settings.summaryType,
+        inputMode,
+        inputContent: contentToSend,
+      });
+      
+      if (savedItem) {
+        addToHistory(savedItem);
+      }
+
+    } catch (err) {
+      setError(err.message || 'Something went wrong.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   /* ---------------------------------------------------------------- */
