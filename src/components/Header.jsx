@@ -27,10 +27,10 @@
 import { useAppContext } from '../context/AppContext';
 
 function Header() {
-  /* ---- Pull the history toggle function from global state ----
-     toggleHistory flips `isHistoryOpen` between true/false,
-     which in turn controls the HistorySidebar's slide animation. */
-  const { toggleHistory } = useAppContext();
+  /* ---- Pull context values ----
+     toggleHistory: opens/closes sidebar
+     theme/setTheme: for toggling dark/light mode */
+  const { toggleHistory, theme, setTheme } = useAppContext();
 
   return (
     <header className="header">
@@ -52,20 +52,23 @@ function Header() {
         {/* App branding — title and subtitle stacked */}
         <div>
           {/* Main title — rendered with a gradient via CSS */}
-          <h1 className="header__title">AI Content Summarizer</h1>
+          <h1 className="header__title">AI content summarizer by Priyaranjan</h1>
 
           {/* Subtitle — small muted text below the title */}
           <p className="header__subtitle">Powered by Your LLM</p>
         </div>
       </div>
 
-      {/* ---- Right Side: Placeholder for future elements ----
-          Examples of what could go here later:
-          • Theme toggle (dark/light)
-          • User avatar / sign-in button
-          • Settings gear icon */}
+      {/* ---- Right Side: Theme Toggle ---- */}
       <div className="header__right">
-        {/* Empty for now */}
+        <button
+          className="header__history-btn"
+          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          aria-label="Toggle Theme"
+          title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+        >
+          {theme === 'dark' ? '☀️' : '🌙'}
+        </button>
       </div>
     </header>
   );

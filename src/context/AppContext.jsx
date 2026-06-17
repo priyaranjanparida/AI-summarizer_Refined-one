@@ -18,7 +18,7 @@
    Zustand provide better performance through selective updates.
    ============================================================ */
 
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 
 // 1. Create the context object — think of it as a "global variable container"
 const AppContext = createContext(null);
@@ -27,6 +27,22 @@ const AppContext = createContext(null);
    AppProvider — wraps the app and provides state to all children
    ------------------------------------------------------------ */
 export function AppProvider({ children }) {
+
+  /* ============================================================
+     THEME STATE
+     ============================================================
+     - theme: 'dark' or 'light'
+     ============================================================ */
+  const [theme, setTheme] = useState('dark');
+
+  // Effect to apply the theme class to the body element
+  useEffect(() => {
+    if (theme === 'light') {
+      document.body.classList.add('light-theme');
+    } else {
+      document.body.classList.remove('light-theme');
+    }
+  }, [theme]);
 
   /* ============================================================
      INPUT STATE
@@ -145,6 +161,10 @@ export function AppProvider({ children }) {
      child components can access via useAppContext().
      ============================================================ */
   const value = {
+    // Theme
+    theme,
+    setTheme,
+
     // Input state
     inputMode,
     setInputMode,
