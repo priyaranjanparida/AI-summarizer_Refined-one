@@ -33,7 +33,7 @@ export function AppProvider({ children }) {
      ============================================================
      - theme: 'dark' or 'light'
      ============================================================ */
-  const [theme, setTheme] = useState('dark');
+  const [theme, setTheme] = useState('light');
 
   // Effect to apply the theme class to the body element
   useEffect(() => {
