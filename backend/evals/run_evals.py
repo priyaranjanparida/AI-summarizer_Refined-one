@@ -36,8 +36,19 @@ async def eval_with_llm_judge(api_key, input_text, expected_summary, generated_s
     """
     Uses a Judge LLM to score Factuality and Comprehensiveness from 1 to 5.
     """
-    # 🎓 PM INSIGHT: We use the ultra-fast gemini-2.5-flash as our judge to save money/time.
-    judge_llm = ChatGoogleGenerativeAI(google_api_key=api_key, model="gemini-2.5-flash", temperature=0.0)
+    # 🎓 PM INSIGHT: We use OpenRouter's owl-alpha to save money/time.
+    from langchain_openai import ChatOpenAI
+    judge_llm = ChatOpenAI(
+        api_key=api_key, 
+        model="openrouter/owl-alpha", 
+        temperature=0.0, 
+        base_url="https://openrouter.ai/api/v1", 
+        max_retries=0,
+        default_headers={
+            "HTTP-Referer": "http://localhost:5173",
+            "X-OpenRouter-Title": "AI Content Summarizer"
+        }
+    )
 
     judge_prompt = ChatPromptTemplate.from_messages([
         ("system", """You are an impartial, expert grader evaluating an AI-generated summary.
@@ -99,7 +110,7 @@ async def run_eval_pipeline(api_key):
         generated_summary = await generate_summary(
             mode="text", 
             content=item['text'], 
-            provider="gemini", 
+            provider="openrouter", 
             api_key=api_key, 
             summary_type=item['persona']
         )

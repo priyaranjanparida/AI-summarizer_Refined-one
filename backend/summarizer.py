@@ -27,19 +27,46 @@ from langchain_groq import ChatGroq
 
 SYSTEM_PROMPTS = {
     "interview": (
-        "You are an expert AI PM recruiter and interviewer. Your task is to analyze the provided text and extract the most important information a candidate would need to know for an MANGOS AI PM interview.\n"
-        "Format your output using Markdown. Use clear headings, bullet points, and bold text for emphasis. Do not use filler words.\n"
-        "Include: 1. 3-5 critical concepts. 2. 5 likely interview questions and answers. 3. A brief cheat sheet 4. Be very focussed on AI PM type questions and expected answers in MANGOS companies."
+        "You are an expert AI PM recruiter and interviewer. Analyze the text and extract the most important information for a MANGOS AI PM interview.\n"
+        "You MUST return ONLY valid JSON matching this exact schema:\n"
+        "{{\n"
+        '  "quick_summary": "1-2 sentences",\n'
+        '  "concepts_covered": ["concept1", "concept2"],\n'
+        '  "flow": "A string describing the flow/process",\n'
+        '  "ai_pm_lens": {{ "business_value": "...", "tradeoff": "..." }},\n'
+        '  "interview_qa": [ {{ "question": "...", "answer": "..." }} ],\n'
+        '  "memory_hook": "A short phrase to remember this"\n'
+        "}}\n"
+        "Do not use markdown blocks outside the JSON."
     ),
     "learning": (
-        "You are a world-class professor known for explaining complex topics simply and concisely. Your goal is to help students learn material as fast as possible.\n"
-        "Format your output using Markdown with emojis, bullet points, and clear sections.\n"
-        "Include: 1. A 2-sentence TL;DR. 2. Key takeaways. 3. Actionable advice. 4. Make it as precise as possible 5. Explain everything in maximum 1000 words"
+        "You are a world-class professor. Explain the topic simply and concisely to help students learn fast.\n"
+        "You MUST return ONLY valid JSON matching this exact schema:\n"
+        "{{\n"
+        '  "quick_summary": "1-2 sentences",\n'
+        '  "why_it_matters": "...",\n'
+        '  "visual_flow": "...",\n'
+        '  "real_life_analogy": "...",\n'
+        '  "key_concepts": ["concept1", "concept2"],\n'
+        '  "ai_pm_lens": {{ "business_value": "...", "tradeoff": "..." }},\n'
+        '  "interview_qa": [ {{ "question": "...", "answer": "..." }} ],\n'
+        '  "memory_hook": "..."\n'
+        "}}\n"
+        "Do not use markdown blocks outside the JSON."
     ),
     "concept": (
-        "You are an expert tutor focusing on first-principles thinking and deep concept mastery. You don't just summarize; you explain the 'why' and 'how' behind the text.\n"
-        "Use Markdown to structure your explanation clearly.\n"
-        "Include: 1. Central thesis. 2. Real-world analogy. 3.Any specific concept discussed in the topic 4. Share if any pattern is observed in the content. 5. Be concise but insightful."
+        "You are an expert tutor focusing on deep concept mastery. Explain the 'why' and 'how'.\n"
+        "You MUST return ONLY valid JSON matching this exact schema:\n"
+        "{{\n"
+        '  "quick_summary": "1-2 sentences",\n'
+        '  "concepts_explained": ["concept1", "concept2"],\n'
+        '  "simple_explanation": "...",\n'
+        '  "visual_flow": "...",\n'
+        '  "real_life_example": "...",\n'
+        '  "key_takeaways": ["takeaway1", "takeaway2"],\n'
+        '  "memory_hook": "..."\n'
+        "}}\n"
+        "Do not use markdown blocks outside the JSON."
     )
 }
 
@@ -51,18 +78,33 @@ def get_llm(provider: str, api_key: str):
     Returns the appropriate LangChain ChatModel based on the provider string.
     """
     if provider == "openai":
-        return ChatOpenAI(api_key=api_key, model="gpt-4o", temperature=0.7)
+        return ChatOpenAI(api_key=api_key, model="gpt-4o", temperature=0.7, max_retries=0)
     elif provider == "claude":
-        return ChatAnthropic(api_key=api_key, model="claude-3-sonnet-20240229", temperature=0.7)
+        return ChatAnthropic(api_key=api_key, model="claude-3-sonnet-20240229", temperature=0.7, max_retries=0)
     elif provider == "gemini":
         # Using Gemini 2.5 Flash as it has much higher free-tier quotas than Pro
-        return ChatGoogleGenerativeAI(google_api_key=api_key, model="gemini-2.5-flash", temperature=0.7)
+        # max_retries=0 ensures that if we hit a quota limit, it immediately throws an error 
+        # to the frontend instead of hanging the UI with exponential backoff retries.
+        return ChatGoogleGenerativeAI(google_api_key=api_key, model="gemini-2.5-flash", temperature=0.7, max_retries=0)
     elif provider == "meta":
         # Using Groq to host Llama3
-        return ChatGroq(api_key=api_key, model="llama3-70b-8192", temperature=0.7)
+        return ChatGroq(api_key=api_key, model="llama3-70b-8192", temperature=0.7, max_retries=0)
     elif provider == "deepseek":
         # Deepseek is OpenAI compatible, so we can use the OpenAI wrapper with a custom base URL
-        return ChatOpenAI(api_key=api_key, model="deepseek-chat", temperature=0.7, base_url="https://api.deepseek.com/v1")
+        return ChatOpenAI(api_key=api_key, model="deepseek-chat", temperature=0.7, base_url="https://api.deepseek.com/v1", max_retries=0)
+    elif provider == "openrouter":
+        # OpenRouter provides an OpenAI-compatible API, allowing us to use free models like owl-alpha
+        return ChatOpenAI(
+            api_key=api_key, 
+            model="openrouter/owl-alpha", 
+            temperature=0.7, 
+            base_url="https://openrouter.ai/api/v1", 
+            max_retries=0,
+            default_headers={
+                "HTTP-Referer": "http://localhost:5173",
+                "X-OpenRouter-Title": "AI Content Summarizer"
+            }
+        )
     else:
         raise ValueError(f"Unsupported provider: {provider}")
 
@@ -108,10 +150,13 @@ async def generate_summary(mode: str, content: str, provider: str, api_key: str,
     
     docs = text_splitter.create_documents([raw_text])
     
+    def clean_json_response(content: str) -> str:
+        return content.replace("```json", "").replace("```", "").strip()
+        
     if len(docs) == 1:
         # Simple case: fits in one chunk
         response = await chain.ainvoke({"text": docs[0].page_content})
-        return response.content
+        return clean_json_response(response.content)
     else:
         # 🎓 PM INSIGHT: Map-Reduce Summarization
         # For huge documents, we summarize each chunk individually (Map), 
@@ -122,7 +167,7 @@ async def generate_summary(mode: str, content: str, provider: str, api_key: str,
         # In a real app, you would run these in parallel using asyncio.gather
         for doc in docs:
             res = await chain.ainvoke({"text": doc.page_content})
-            partial_summaries.append(res.content)
+            partial_summaries.append(clean_json_response(res.content))
             
         combined_text = "\n\n--- PART ---\n\n".join(partial_summaries)
         
@@ -135,4 +180,4 @@ async def generate_summary(mode: str, content: str, provider: str, api_key: str,
         agg_chain = agg_prompt | llm
         final_response = await agg_chain.ainvoke({"text": combined_text})
         
-        return final_response.content
+        return clean_json_response(final_response.content)

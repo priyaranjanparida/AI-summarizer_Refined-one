@@ -66,9 +66,10 @@ const SUMMARY_TYPES = [
  * add an entry here and the <select> picks it up automatically.
  */
 const LLM_PROVIDERS = [
+  { value: 'openrouter', label: 'OpenRouter (Owl Alpha)' },
   { value: 'openai', label: 'OpenAI (GPT-4o)' },
   { value: 'claude', label: 'Claude (Sonnet)' },
-  { value: 'gemini', label: 'Gemini (Pro)' },
+  { value: 'gemini', label: 'Gemini (Flash)' },
   { value: 'meta', label: 'Meta (Llama)' },
   { value: 'deepseek', label: 'DeepSeek (Chat)' },
 ];

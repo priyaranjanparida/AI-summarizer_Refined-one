@@ -236,17 +236,79 @@ const ResultsPanel = () => {
         * That will give us headings, lists, code blocks, bold/italic,
         * and other rich formatting that AI models commonly output.
         * ============================================================ */}
-      <div className="results-panel__content">
-        {/* // TODO: Replace with react-markdown for proper markdown rendering */}
-        {result.split('\n').map((paragraph, index) =>
-          // Only render non-empty lines as paragraphs
-          paragraph.trim() ? (
-            <p key={index} dangerouslySetInnerHTML={{ __html: paragraph }} />
-          ) : (
-            // Empty lines become spacers (like a blank line between paragraphs)
-            <br key={index} />
-          )
-        )}
+      <div className="results-panel__content" style={{ textAlign: 'left' }}>
+        {(() => {
+          try {
+            // Try to parse the result as JSON (Our new structured output)
+            const data = JSON.parse(result);
+            
+            // Helper function to render simple arrays
+            const renderArray = (arr) => (
+              <ul style={{ paddingLeft: '1.5rem', marginBottom: '1rem', listStyleType: 'disc' }}>
+                {arr.map((item, i) => <li key={i} style={{ marginBottom: '0.25rem' }}>{item}</li>)}
+              </ul>
+            );
+            
+            // Helper function to render objects (like ai_pm_lens or interview_qa items)
+            const renderObject = (obj) => (
+              <div style={{ marginLeft: '1rem', marginBottom: '1rem', padding: '0.75rem', backgroundColor: 'var(--bg-secondary)', borderRadius: '4px' }}>
+                {Object.entries(obj).map(([k, v]) => (
+                  <div key={k} style={{ marginBottom: '0.5rem' }}>
+                    <strong style={{ color: 'var(--text-primary)', textTransform: 'capitalize' }}>
+                      {k.replace(/_/g, ' ')}: 
+                    </strong> 
+                    <span style={{ marginLeft: '0.5rem' }}>{v}</span>
+                  </div>
+                ))}
+              </div>
+            );
+
+            // Dynamically render every field returned by the LLM
+            return Object.entries(data).map(([key, value]) => {
+              // Convert "quick_summary" to "Quick Summary" for the heading
+              const heading = key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+              
+              return (
+                <div key={key} style={{ marginBottom: '1.5rem' }}>
+                  <h3 style={{ 
+                    color: 'var(--primary)', 
+                    marginBottom: '0.75rem', 
+                    borderBottom: '1px solid var(--border)', 
+                    paddingBottom: '0.25rem',
+                    fontSize: '1.1rem'
+                  }}>
+                    ✨ {heading}
+                  </h3>
+                  
+                  {Array.isArray(value) ? (
+                    // Handle arrays (either strings like concepts_covered or objects like interview_qa)
+                    typeof value[0] === 'object' ? (
+                      value.map((item, i) => <div key={i}>{renderObject(item)}</div>)
+                    ) : (
+                      renderArray(value)
+                    )
+                  ) : typeof value === 'object' && value !== null ? (
+                    // Handle nested objects (like ai_pm_lens)
+                    renderObject(value)
+                  ) : (
+                    // Handle standard strings
+                    <p style={{ lineHeight: '1.6', color: 'var(--text-secondary)' }}>{value}</p>
+                  )}
+                </div>
+              );
+            });
+            
+          } catch (e) {
+            // FALLBACK: If the LLM failed to return JSON, fall back to our standard text rendering
+            return result.split('\n').map((paragraph, index) =>
+              paragraph.trim() ? (
+                <p key={index} style={{ marginBottom: '1rem', lineHeight: '1.6' }}>{paragraph}</p>
+              ) : (
+                <br key={index} />
+              )
+            );
+          }
+        })()}
       </div>
 
       {/* ============================================================
