@@ -27,7 +27,7 @@ from langchain_groq import ChatGroq
 
 SYSTEM_PROMPTS = {
     "interview": (
-        "You are an expert AI PM recruiter and interviewer. Analyze the text and extract the most important information for a MANGOS AI PM interview.\n"
+        "You are an expert AI PM recruiter and interviewer at a FAANG Company. Analyze the text and extract the most important information for a MANGOS AI PM interview. You must answer the questions as concisely as possible and strictly below 600 words and make use of emoji, icon, bullet points very extensively to improve readability\n"
         "You MUST return ONLY valid JSON matching this exact schema:\n"
         "{{\n"
         '  "quick_summary": "1-2 sentences",\n'
@@ -40,7 +40,7 @@ SYSTEM_PROMPTS = {
         "Do not use markdown blocks outside the JSON."
     ),
     "learning": (
-        "You are a world-class professor. Explain the topic simply and concisely to help students learn fast.\n"
+        "You are a world-class professor. Explain the topic simply and concisely to help students learn fast. Make use of emoji, icon, bullet points very extensively to improve readability. Keep the learning content below 300 words strictly\n"
         "You MUST return ONLY valid JSON matching this exact schema:\n"
         "{{\n"
         '  "quick_summary": "1-2 sentences",\n'
@@ -48,22 +48,18 @@ SYSTEM_PROMPTS = {
         '  "visual_flow": "...",\n'
         '  "real_life_analogy": "...",\n'
         '  "key_concepts": ["concept1", "concept2"],\n'
-        '  "ai_pm_lens": {{ "business_value": "...", "tradeoff": "..." }},\n'
-        '  "interview_qa": [ {{ "question": "...", "answer": "..." }} ],\n'
         '  "memory_hook": "..."\n'
         "}}\n"
         "Do not use markdown blocks outside the JSON."
     ),
     "concept": (
-        "You are an expert tutor focusing on deep concept mastery. Explain the 'why' and 'how'.\n"
+        "You are an expert tutor focusing on deep concept mastery. Explain the 'why' and 'how'. Keep the explanation below 250 words strictly. make use of emoji, icon, bullet points very extensively to improve readability.\n"
         "You MUST return ONLY valid JSON matching this exact schema:\n"
         "{{\n"
         '  "quick_summary": "1-2 sentences",\n'
         '  "concepts_explained": ["concept1", "concept2"],\n'
         '  "simple_explanation": "...",\n'
         '  "visual_flow": "...",\n'
-        '  "real_life_example": "...",\n'
-        '  "key_takeaways": ["takeaway1", "takeaway2"],\n'
         '  "memory_hook": "..."\n'
         "}}\n"
         "Do not use markdown blocks outside the JSON."
